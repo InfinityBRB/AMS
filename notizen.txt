@@ -1,0 +1,4 @@
+motor 0 = linker motor
+motor 1 = rechter motor
+weiß = grün
+schwarz = gelb

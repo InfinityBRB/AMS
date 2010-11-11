@@ -3,34 +3,32 @@
 #include <stub.h>
 
 #define WHITE 110
-//linker/rechter Motor vorw‰rts/r¸ckw‰rts definieren
+//linker/rechter Motor vorw√§rts/r√ºckw√§rts definieren
 #define motLeft 1
 #define motRight 0
 #define forward 0
 #define backward 1
 
 //Sensoren von links nach rechts definieren z.B.: LEFT_RIGHT ist der rechte von der linken Sensorgruppe
-#define LEFT_LEFT 6
-#define LEFT_MID 7
-#define LEFT_RIGHT 8
+#define LEFT 8
+#define LEFT_BACK 7
 
 #define MID_LEFT 5
 #define MID_MID 4
 #define MID_RIGHT 3
 
-#define RIGHT_LEFT 2
-#define RIGHT_MID 1
-#define RIGHT_RIGHT 0
+#define RIGHT 2
+#define RIGHT_BACK 1
 
-//Anzahl Sensoren f¸r Bodenerkennung
+//Anzahl Sensoren f√ºr Bodenerkennung
 #define SENSOR_WHITE 9
 
-// Laufzeit in ms: 120000 f¸r unser Spiel
+// Laufzeit in ms: 120000 f√ºr unser Spiel
 #define RUNTIME 40000
-#define LINESPERR 50
+#define LINESPERR 250
+#define KURVSPERR 1100
 
-
-//Motorzust‰nde definieren
+//Motorzust√§nde definieren
 unsigned int motPowLeft = 0;
 unsigned int motPowRight = 0;
 unsigned int motGearLeft = forward;
@@ -38,25 +36,27 @@ unsigned int motGearRight = forward;
 
 unsigned char sensor[SENSOR_WHITE];
 
-//Abbiegeungen Z‰hler
+//Abbiegungen Z√§hler
 unsigned int abbrechts = 0;
 unsigned int ablinks = 0;
 
-//Linienz‰hler
+//Linienz√§hler und Sperrzeit zum Z√§hlen
 unsigned int count = 0;
+unsigned long sperrtimeout = 0;
+unsigned long nachkurvetimeout = 0;
 //Zwischenvariable dazu
 unsigned int linel = 0;
 unsigned int liner = 0;
-//Kurvenz‰hler
+//Kurvenz√§hler
 unsigned int kurven = 0;
 
 
-//Setzt die Motorkraft f¸r den linken und rechten Motor 
+//Setzt die Motorkraft f√ºr den linken und rechten Motor 
 void setMotPow(unsigned left, unsigned right){
 motor_pwm(motLeft,left);
 motor_pwm(motRight,right);
 }
-//Setzt den Motorgang(V/R) f¸r den linken und rechten Motor
+//Setzt den Motorgang(V/R) f√ºr den linken und rechten Motor
 void setMotGear(unsigned left, unsigned right){
 motor_richtung(motLeft,left);
 motor_richtung(motRight,right);
@@ -67,7 +67,7 @@ while(analog(9) < WHITE) {
 		lcd_puts("<3 Ich will starten <3");
 	}
 }
-//Methode die in das Array sensors[] die Werte 1(weiﬂ) oder 0(nich-weiﬂ) f¸r alle Liniensensoren schreibt
+//Methode die in das Array sensors[] die Werte 1(wei√ü) oder 0(nich-wei√ü) f√ºr alle Liniensensoren schreibt
 void updateSensorsWhite(void){
 	int i;
 	for (i = 0; i < SENSOR_WHITE; i++) {
@@ -79,8 +79,6 @@ unsigned char muchLeft(void){
 	unsigned char left = 0;	
 	if (sensor[MID_RIGHT] == 0 && sensor[MID_LEFT] == 1){
 		left=1;
-		//lcd_cls();
-		//lcd_puts("right");
 	}
 	return left;
 }
@@ -89,12 +87,10 @@ unsigned char muchRight(void){
 	unsigned char right = 0;
 	if (sensor[MID_LEFT] == 0 && sensor[MID_RIGHT] == 1){
 		right=1;
-		//lcd_cls();
-		//lcd_puts("left");
 	}
 	return right;
 }
-//Pr¸fung ob zu weit links oder rechts und reagieren mit Kurskorrektur ->Folgen der Linie
+//Pr√ºfung ob zu weit links oder rechts und reagieren mit Kurskorrektur ->Folgen der Linie
 void followLine(void){
 	updateSensorsWhite();
 	if(muchLeft()){
@@ -109,7 +105,7 @@ void followLine(void){
 	
 }
 
-//Rotation um 90∞ um eine Ecke auf der Streckenmarkierung, ‹bergabe der Richtung als deutsches Wort links/rechts in einem String
+//Rotation um 90¬∞ um eine Ecke auf der Streckenmarkierung, √úbergabe der Richtung als deutsches Wort links/rechts in einem String
 void rotate(unsigned char richtung){
 	//updateSensorsWhite();
 	//nach rechts??
@@ -117,64 +113,53 @@ void rotate(unsigned char richtung){
 		setMotPow(motPowLeft,0);
 			setMotGear(forward,backward);
 			setMotPow(motPowLeft,10);
+			sleep(500);
 			do{
 				updateSensorsWhite();
-			}while(sensor[RIGHT_LEFT] || sensor[RIGHT_MID]);
+			}while(sensor[MID_MID]);
 			setMotPow(motPowLeft,0);
 			setMotGear(forward,forward);		
-		//lcd_cls();
-		//lcd_puts("abbiegen rechts");
-			do{
-				updateSensorsWhite();
-			}while(sensor[MID_RIGHT] || sensor[MID_MID]);
 		setMotPow(motPowLeft,motPowRight);
 	
 	//nach links??
 	}else if (richtung == 'links'){
 		setMotPow(0,motPowRight);
 			setMotGear(backward,forward);
-			setMotPow(10,motPowRight);			
+			setMotPow(10,motPowRight);
+			sleep(500);
 			do{
 				updateSensorsWhite();
-			}while(sensor[LEFT_RIGHT] || sensor[LEFT_MID]);
+			}while(sensor[MID_MID]);
 			setMotPow(0,motPowRight);
 			setMotGear(forward,forward);
-		//lcd_cls();
-		//lcd_puts("abbiegen links");
-			do{
-				updateSensorsWhite();
-			}while(sensor[MID_LEFT] || sensor[MID_MID]);
-		setMotPow(motPowLeft,motPowRight);
+ 		setMotPow(motPowLeft,motPowRight);
 	}	
-	
-	lcd_cls();
-	lcd_puts("habs");
 	followLine();
 	kurven++;
 	count = 0;
+	lcd_cls();
+	lcd_uint(count);
+	nachkurvetimeout = akt_time() + KURVSPERR;
 }
 
-
-
-
 void countLines(void){
-	if(sensor[LEFT_MID] == 0 && linel == 0 && liner == 0){
+	if(sensor[LEFT_BACK] == 0 && linel == 0 && liner == 0 && akt_time()>=nachkurvetimeout && akt_time()>=sperrtimeout){
 		linel = 1;
-		unsigned long sperrtimeout = akt_time() + LINESPERR;
-	}else if(sensor[LEFT_MID] == 1 && linel == 1 && liner == 0 && akttime()>=sperrtimeout){
+	}else if(sensor[LEFT_BACK] == 1 && linel == 1 && liner == 0){
 		count++;
 		linel =0;
 		liner =0;
+		sperrtimeout = akt_time() + LINESPERR;
 		lcd_cls();
 		lcd_uint(count);
 	}		
-	if(sensor[RIGHT_MID] == 0 && liner == 0 && linel == 0){
-		liner = 1;
-		unsigned long sperrtimeout = akt_time() + LINESPERR;
-	}else if(sensor[RIGHT_MID] == 1 && liner == 1 && linel == 0 && akttime()>=sperrtimeout){
+	if(sensor[RIGHT_BACK] == 0 && liner == 0 && linel == 0 && akt_time()>=nachkurvetimeout && akt_time()>=sperrtimeout){
+		liner = 1;		
+	}else if(sensor[RIGHT_BACK] == 1 && liner == 1 && linel == 0){
 		count++;
 		linel =0;
 		liner =0;
+		sperrtimeout = akt_time() + LINESPERR;
 		lcd_cls();
 		lcd_uint(count);
 	}
@@ -196,7 +181,7 @@ void AksenMain(void) {
 		}
 		followLine();
 		countLines();
-		//Z‰hlen der jeweiligen Linien bis zur n‰chsten Kurve Linien mit anschlieﬂender passender Rotation
+		//Z√§hlen der jeweiligen Linien bis zur n√§chsten Kurve Linien mit anschlie√üender passender Rotation
 		if(count == 1 && kurven == 0){
 			rotate('links');
 		}
@@ -215,7 +200,7 @@ void AksenMain(void) {
 		if(count == 2 && kurven == 5){
 			rotate('links');
 		}
-		if(count == 1 && kurven == 6){
+		if(count == 2 && kurven == 6){
 			rotate('rechts');
 		}
 		if(count == 2 && kurven == 7){

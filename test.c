@@ -35,7 +35,10 @@ unsigned int motGearLeft = forward;
 unsigned int motGearRight = forward;
 
 unsigned char sensor[SENSOR_WHITE];
+unsigned long timeoutAt = 0;
 
+//Variable für Startposition
+unsigned char start = 'u';
 //Abbiegungen Zähler
 unsigned int abbrechts = 0;
 unsigned int ablinks = 0;
@@ -50,6 +53,9 @@ unsigned int liner = 0;
 //Kurvenzähler
 unsigned int kurven = 0;
 
+//Zähler für Dauer einer Kurve
+unsigned long messung_start = 0;
+unsigned long messung = 0;
 
 //Setzt die Motorkraft für den linken und rechten Motor 
 void setMotPow(unsigned left, unsigned right){
@@ -62,11 +68,21 @@ motor_richtung(motLeft,left);
 motor_richtung(motRight,right);
 }
 //Methode zum starten(warten auf Startlampe) 
-void start(void){
-while(analog(9) < WHITE) {
-		lcd_puts("<3 Ich will starten <3");
+void starting(void){
+	if (analog(LEFT_BACK)>WHITE){ 				//wenn links schwarz
+		start = 'l';
+	}else if (analog(RIGHT_BACK)>WHITE){		//wenn rechts schwarz
+		start = 'r';
 	}
+	motPowLeft=8;
+	motPowRight=8;
+	lcd_putchar(start);
+	while(analog(9)>100);
+	timeoutAt = akt_time() + RUNTIME;
+	setMotPow(motPowLeft,motPowRight);			//Gas geben:-)
+	sperrtimeout = akt_time() + 400; 			//Sperrzeit zum Linienzählen
 }
+
 //Methode die in das Array sensors[] die Werte 1(weiß) oder 0(nich-weiß) für alle Liniensensoren schreibt
 void updateSensorsWhite(void){
 	int i;
@@ -101,13 +117,11 @@ void followLine(void){
 		//lcd_puts("left");
 	}else{
 		setMotPow(motPowLeft,motPowRight);
-	}
-	
+	}	
 }
 
 //Rotation um 90° um eine Ecke auf der Streckenmarkierung, Übergabe der Richtung als deutsches Wort links/rechts in einem String
 void rotate(unsigned char richtung){
-	//updateSensorsWhite();
 	//nach rechts??
 	if(richtung == 'rechts'){
 		setMotPow(motPowLeft,0);
@@ -142,7 +156,85 @@ void rotate(unsigned char richtung){
 	nachkurvetimeout = akt_time() + KURVSPERR;
 }
 
+void rotateVorFrei(unsigned char richtung){
+	//nach rechts??
+	if(richtung == 'rechts'){
+		messung_start = akt_time();
+		setMotPow(motPowLeft,0);
+			setMotGear(forward,backward);
+			setMotPow(motPowLeft,10);
+			sleep(500);
+			do{
+				updateSensorsWhite();
+			}while(sensor[MID_MID]);
+			messung = akt_time() - messung_start;
+			setMotPow(motPowLeft,0);
+			setMotGear(forward,forward);		
+		setMotPow(motPowLeft,motPowRight);
+	
+	//nach links??
+	}else if (richtung == 'links'){
+		messung_start = akt_time();
+		setMotPow(0,motPowRight);
+			setMotGear(backward,forward);
+			setMotPow(10,motPowRight);
+			sleep(500);
+			do{
+				updateSensorsWhite();
+			}while(sensor[MID_MID]);
+			messung = akt_time() - messung_start;
+			setMotPow(0,motPowRight);
+			setMotGear(forward,forward);
+ 		setMotPow(motPowLeft,motPowRight);
+	}	
+	followLine();
+	kurven++;
+	count = 0;
+	lcd_cls();
+	lcd_uint(count);
+	nachkurvetimeout = akt_time() + KURVSPERR;
+}
+
+void rotateFrei(unsigned char richtung){
+	//nach rechts??
+	if(richtung == 'rechts'){
+		messung_start = akt_time() + messung;
+		setMotPow(motPowLeft,0);
+			setMotGear(forward,backward);
+			setMotPow(motPowLeft,10);
+			sleep(500);
+			do{
+			lcd_cls;
+			lcd_puts("ich drehe frei!");
+			}while(akt_time()<=messung_start);
+			setMotPow(motPowLeft,0);
+			setMotGear(forward,forward);		
+		setMotPow(motPowLeft,motPowRight);
+	
+	//nach links??
+	}else if (richtung == 'links'){
+		messung_start = akt_time() + messung;
+		setMotPow(0,motPowRight);
+			setMotGear(backward,forward);
+			setMotPow(10,motPowRight);
+			sleep(500);
+			do{
+				updateSensorsWhite();
+			}while(akt_time()<=messung_start);
+			setMotPow(0,motPowRight);
+			setMotGear(forward,forward);
+ 		setMotPow(motPowLeft,motPowRight);
+	}	
+	followLine();
+	kurven++;
+	count = 0;
+	lcd_cls();
+	lcd_uint(count);
+	nachkurvetimeout = akt_time() + KURVSPERR;
+}
+
 void countLines(void){
+	updateSensorsWhite();
 	if(sensor[LEFT_BACK] == 0 && linel == 0 && liner == 0 && akt_time()>=nachkurvetimeout && akt_time()>=sperrtimeout){
 		linel = 1;
 	}else if(sensor[LEFT_BACK] == 1 && linel == 1 && liner == 0){
@@ -165,25 +257,11 @@ void countLines(void){
 	}
 }
 
-void AksenMain(void) {
-	unsigned long timeoutAt = 0;
-	
-	//start();
-	lcd_puts("<3 Ich will starten <3");
-	timeoutAt = akt_time() + RUNTIME;
-	
-	motPowLeft=8;
-	motPowRight=8;
-	do {
-		if (akt_time() >= timeoutAt) {
-			setMotPow(0,0);
-			break;
-		}
-		followLine();
-		countLines();
-		//Zählen der jeweiligen Linien bis zur nächsten Kurve Linien mit anschließender passender Rotation
+
+void manage(unsigned char start){
+	if (start == 'l'){
 		if(count == 1 && kurven == 0){
-			rotate('links');
+				rotate('links');
 		}
 		if(count == 2 && kurven == 1){
 			rotate('links');
@@ -201,11 +279,49 @@ void AksenMain(void) {
 			rotate('links');
 		}
 		if(count == 2 && kurven == 6){
-			rotate('rechts');
+			rotateVorFrei('rechts');
 		}
 		if(count == 2 && kurven == 7){
+			rotateFrei('rechts');
+		}
+	}else if (start == 'r'){
+		if(count == 1 && kurven == 0){
+				rotate('rechts');
+		}
+		if(count == 2 && kurven == 1){
 			rotate('rechts');
 		}
+		if(count == 1 && kurven == 2){
+			rotate('links');
+		}
+		if(count == 2 && kurven == 3){
+			rotate('links');
+		}
+		if(count == 2 && kurven == 4){
+			rotate('rechts');
+		}
+		if(count == 2 && kurven == 5){
+			rotate('rechts');
+		}
+		if(count == 2 && kurven == 6){
+			rotateVorFrei('links');
+		}
+		if(count == 2 && kurven == 7){
+			rotateFrei('links');
+		}
+	}
+}	
+
+void AksenMain(void) {
+	starting();	
+	do {
+		if (akt_time() >= timeoutAt) {
+			setMotPow(0,0);
+			break;
+		}
+		followLine();
+		countLines();
+		manage(start);
 		
 		
 	}while(1);

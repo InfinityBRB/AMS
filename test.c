@@ -69,6 +69,7 @@ motor_richtung(motRight,right);
 }
 //Methode zum starten(warten auf Startlampe) 
 void starting(void){
+	servo_arc(0, 54);
 	if (analog(LEFT_BACK)>WHITE){ 				//wenn links schwarz
 		start = 'l';
 	}else if (analog(RIGHT_BACK)>WHITE){		//wenn rechts schwarz
@@ -281,8 +282,11 @@ void manage(unsigned char start){
 		if(count == 2 && kurven == 6){
 			rotateFrei('rechts');
 		}
+		if(count == 2 && kurven == 7){
+			servo_arc(0, 120);
+		}
 		if(count == 3 && kurven == 7){
-			rotateFrei ('rechts');
+			rotate('rechts');
 		}
 	}else if (start == 'r'){
 		if(count == 1 && kurven == 0){
@@ -306,8 +310,11 @@ void manage(unsigned char start){
 		if(count == 2 && kurven == 6){
 			rotateFrei('links');
 		}
+		if(count == 2 && kurven == 7){
+			servo_arc(0, 1);
+		}
 		if(count == 3 && kurven == 7){
-			rotateFrei('links');
+			rotate('links');
 		}
 	}
 }	
@@ -319,11 +326,15 @@ void AksenMain(void) {
 			setMotPow(0,0);
 			break;
 		}
+		if(kurven == 8 && sensor[MID_MID] == 1 && sensor[MID_LEFT] == 1 && sensor[MID_RIGHT] == 1){
+			setMotPow(0,0);
+			break;		
+		}
 		followLine();
 		countLines();
 		manage(start);
 		
-		
+				
 	}while(1);
 	while(1);
 } 

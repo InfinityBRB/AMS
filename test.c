@@ -25,7 +25,7 @@
 
 // Laufzeit in ms: 120000 für unser Spiel
 #define RUNTIME 40000
-#define LINESPERR 250
+#define LINESPERR 280
 #define KURVSPERR 1100
 
 //Motorzustände definieren
@@ -131,7 +131,7 @@ void rotate(unsigned char richtung){
 			sleep(500);
 			do{
 				updateSensorsWhite();
-			}while(sensor[MID_MID]);
+			}while(sensor[MID_RIGHT]);
 			setMotPow(motPowLeft,0);
 			setMotGear(forward,forward);		
 		setMotPow(motPowLeft,motPowRight);
@@ -144,7 +144,7 @@ void rotate(unsigned char richtung){
 			sleep(500);
 			do{
 				updateSensorsWhite();
-			}while(sensor[MID_MID]);
+			}while(sensor[MID_LEFT]);
 			setMotPow(0,motPowRight);
 			setMotGear(forward,forward);
  		setMotPow(motPowLeft,motPowRight);
@@ -167,7 +167,7 @@ void rotateVorFrei(unsigned char richtung){
 			sleep(500);
 			do{
 				updateSensorsWhite();
-			}while(sensor[MID_MID]);
+			}while(sensor[MID_RIGHT]);
 			messung = akt_time() - messung_start+55;
 			setMotPow(motPowLeft,0);
 			setMotGear(forward,forward);		
@@ -182,8 +182,8 @@ void rotateVorFrei(unsigned char richtung){
 			sleep(500);
 			do{
 				updateSensorsWhite();
-			}while(sensor[MID_MID]);
-			messung = akt_time() - messung_start+55;
+			}while(sensor[MID_LEFT]);
+			messung = akt_time() - messung_start+50;
 			setMotPow(0,motPowRight);
 			setMotGear(forward,forward);
  		setMotPow(motPowLeft,motPowRight);

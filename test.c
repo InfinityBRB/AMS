@@ -28,6 +28,8 @@
 #define LINESPERR 280
 #define KURVSPERR 1100
 
+unsigned char setting = 0;
+
 //Motorzustände definieren
 unsigned int motPowLeft = 0;
 unsigned int motPowRight = 0;
@@ -91,6 +93,8 @@ void updateSensorsWhite(void){
 		sensor[i] = (analog(i) < WHITE);
 	}
 }
+
+
 //Roboter zu weit links erkennen 0=nicht zu weit links, 1=zu weit links
 unsigned char muchLeft(void){
 	unsigned char left = 0;	
@@ -110,7 +114,32 @@ unsigned char muchRight(void){
 //Prüfung ob zu weit links oder rechts und reagieren mit Kurskorrektur ->Folgen der Linie
 void followLine(void){
 	updateSensorsWhite();
-	if(muchLeft()){
+	if (kurven == 7 && (count == 1) && setting == 0){
+		if (sensor[MID_MID] == 0){	
+			if(start == 'l'){
+				motPowRight = motPowRight + 2;
+				lcd_cls();
+				lcd_puts("korrektur");
+			}else{
+				motPowLeft = motPowLeft + 1;
+				motPowRight = motPowRight -3;
+				lcd_cls();
+				lcd_puts("korrektur");
+			}
+		}else{
+			if(start == 'l'){
+				motPowLeft = motPowLeft + 1;
+				lcd_cls();
+				lcd_puts("korrektur");
+			}else{
+				motPowRight = motPowRight+1;
+				motPowLeft = motPowLeft - 3;
+				lcd_cls();
+				lcd_puts("korrektur");
+			}
+		}
+		setting = 1;
+	}else if (muchLeft()){
 		setMotPow(motPowLeft,0);
 		//lcd_puts("right");
 	}else if (muchRight()){
@@ -157,6 +186,45 @@ void rotate(unsigned char richtung){
 	nachkurvetimeout = akt_time() + KURVSPERR;
 }
 
+void rotateEnde(unsigned char richtung){
+	motPowLeft = 8;
+	motPowRight = 8;
+	//nach rechts??
+	if(richtung == 'rechts'){
+		setMotPow(motPowLeft,0);
+			setMotGear(forward,backward);
+			setMotPow(motPowLeft,10);
+			sleep(200);
+			do{
+				updateSensorsWhite();
+			}while(sensor[MID_RIGHT]);
+			setMotPow(motPowLeft,0);
+			setMotGear(forward,forward);		
+		setMotPow(motPowLeft,motPowRight);
+	
+	//nach links??
+	}else if (richtung == 'links'){
+		setMotPow(0,motPowRight);
+			setMotGear(backward,forward);
+			setMotPow(10,motPowRight);
+			sleep(200);
+			do{
+				updateSensorsWhite();
+			}while(sensor[MID_LEFT]);
+			setMotPow(0,motPowRight);
+			setMotGear(forward,forward);
+ 		setMotPow(motPowLeft,motPowRight);
+	}
+	motPowLeft = 10;
+	motPowRight = 10;	
+	followLine();
+	kurven++;
+	count = 0;
+	lcd_cls();
+	lcd_uint(count);
+	nachkurvetimeout = akt_time() + KURVSPERR;
+}
+
 void rotateVorFrei(unsigned char richtung){
 	//nach rechts??
 	if(richtung == 'rechts'){
@@ -168,7 +236,7 @@ void rotateVorFrei(unsigned char richtung){
 			do{
 				updateSensorsWhite();
 			}while(sensor[MID_RIGHT]);
-			messung = akt_time() - messung_start+55;
+			messung = akt_time() - messung_start+52;//höhere Werte= weniger Drehung
 			setMotPow(motPowLeft,0);
 			setMotGear(forward,forward);		
 		setMotPow(motPowLeft,motPowRight);
@@ -183,7 +251,7 @@ void rotateVorFrei(unsigned char richtung){
 			do{
 				updateSensorsWhite();
 			}while(sensor[MID_LEFT]);
-			messung = akt_time() - messung_start+50;
+			messung = akt_time() - messung_start+45;//höhere Werte= weniger Drehung
 			setMotPow(0,motPowRight);
 			setMotGear(forward,forward);
  		setMotPow(motPowLeft,motPowRight);
@@ -245,6 +313,7 @@ void countLines(void){
 		sperrtimeout = akt_time() + LINESPERR;
 		lcd_cls();
 		lcd_uint(kurven);
+		setting = 0;
 	}		
 	if(sensor[RIGHT_BACK] == 0 && liner == 0 && linel == 0 && akt_time()>=nachkurvetimeout && akt_time()>=sperrtimeout){
 		liner = 1;		
@@ -255,6 +324,7 @@ void countLines(void){
 		sperrtimeout = akt_time() + LINESPERR;
 		lcd_cls();
 		lcd_uint(kurven);
+		setting = 0;
 	}
 }
 
@@ -271,22 +341,24 @@ void manage(unsigned char start){
 			rotate('rechts');
 		}
 		if(count == 2 && kurven == 3){
-			rotate('rechts');
+			rotateVorFrei('rechts');
 		}
 		if(count == 2 && kurven == 4){
 			rotate('links');
 		}
 		if(count == 2 && kurven == 5){
-			rotateVorFrei('links');
+			rotate('links');
 		}
 		if(count == 2 && kurven == 6){
 			rotateFrei('rechts');
 		}
 		if(count == 2 && kurven == 7){
 			servo_arc(0, 120);
+			motPowLeft = 8;
+			motPowRight = 8;
 		}
 		if(count == 3 && kurven == 7){
-			rotate('rechts');
+			rotateEnde('rechts');
 		}
 	}else if (start == 'r'){
 		if(count == 1 && kurven == 0){
@@ -299,22 +371,24 @@ void manage(unsigned char start){
 			rotate('links');
 		}
 		if(count == 2 && kurven == 3){
-			rotate('links');
+			rotateVorFrei('links');
 		}
 		if(count == 2 && kurven == 4){
 			rotate('rechts');
 		}
 		if(count == 2 && kurven == 5){
-			rotateVorFrei('rechts');
+			rotate('rechts');
 		}
 		if(count == 2 && kurven == 6){
 			rotateFrei('links');
 		}
 		if(count == 2 && kurven == 7){
 			servo_arc(0, 1);
+			motPowLeft = 8;
+			motPowRight = 8;
 		}
 		if(count == 3 && kurven == 7){
-			rotate('links');
+			rotateEnde('links');
 		}
 	}
 }	

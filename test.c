@@ -24,7 +24,7 @@
 #define SENSOR_WHITE 9
 
 // Laufzeit in ms: 120000 für unser Spiel
-#define RUNTIME 40000
+#define RUNTIME 70000
 #define LINESPERR 280
 #define KURVSPERR 1100
 
@@ -283,11 +283,11 @@ void rotateFrei(unsigned char richtung){
 			setMotPow(10,motPowRight);
 			sleep(500);
 			do{
-				updateSensorsWhite();
+				
 			}while(akt_time()<=messung_start);
 			setMotPow(0,motPowRight);
 			setMotGear(forward,forward);
-			motPowLeft=motPowLeft-2;
+			//motPowLeft=motPowLeft-1;
  		setMotPow(motPowLeft,motPowRight);
 	}	
 	followLine();
@@ -415,4 +415,4 @@ void AksenMain(void) {
 				
 	}while(1);
 	while(1);
-} 
+}
